@@ -8,7 +8,9 @@ from app_admin.views import (
     VerifyEmailViews,
     UserLoginViews,
     AdminLoginViews,
-
+    RequestPasswordResetEmailViews,
+    PasswordTokenCheckAPIViews,
+    SetNewPasswordAPIView,
 )
 urlpatterns = [
     path("Register-User/", RegisterView.as_view(), name="RegisterUser"),
@@ -16,4 +18,11 @@ urlpatterns = [
     path("Email-Verify/", VerifyEmailViews.as_view(), name="Email-Verify"),
     path("Login-User/", UserLoginViews.as_view(), name="UserLogin"),
     path("Login-Admin/", AdminLoginViews.as_view(), name="AdminLogin"),
+    # Reset Forget Password
+    path('Request-Reset-Email/', RequestPasswordResetEmailViews.as_view(),
+         name="RequestResetEmail"),
+    path('Password-Reset/<uidb64>/<token>/',
+         PasswordTokenCheckAPIViews.as_view(), name='passwordResetConfirm'),
+    path('Password-Reset-Complete/', SetNewPasswordAPIView.as_view(),
+         name='PasswordResetComplete'),
 ]

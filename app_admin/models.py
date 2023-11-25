@@ -114,4 +114,88 @@ class User(AbstractUser):
         return {"refresh": str(refresh), "access": str(refresh.access_token)}
 
 
-#
+# Subject
+class Subject(models.Model):
+    subject_code = models.CharField(max_length=50, unique=True)
+    subject_name = models.CharField(max_length=100)
+
+    is_active = models.BooleanField(default=True)
+    created_on = models.DateTimeField(auto_now_add=True)
+    updated_on = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.subject_code}-{self.subject_name}"
+
+
+# Department
+class Department(models.Model):
+    department_code = models.CharField(max_length=50, unique=True)
+    department_name = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
+    created_on = models.DateTimeField(auto_now_add=True)
+    updated_on = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.department_code}-{self.department_name}"
+
+
+# Teacher
+class StaffDetails(models.Model):
+    user_id = models.ForeignKey(User, on_delete=models.CASCADE,
+                                related_name='userSub',
+                                related_query_name='userSubs',
+                                limit_choices_to={'is_active': True},)
+
+    main_subject_id = models.ForeignKey(Subject, on_delete=models.CASCADE,
+                                        related_name='techerMainSub',
+                                        related_query_name='techerMainSubs',
+                                        limit_choices_to={'is_active': True},
+                                        null=True, blank=True)
+
+    subjects_ids = models.ManyToManyField(Subject)
+
+    date_of_joining = models.DateField(auto_now=False, auto_now_add=False)
+    date_of_leaving = models.DateField(auto_now=False, auto_now_add=False)
+
+    gender = models.CharField(max_length=10, choices=[(
+        "Male", "Male"), ("Female", "Female"), ("Other", "Other")], default="Male")
+
+    department_id = models.ForeignKey(Department, on_delete=models.CASCADE,
+                                      related_name='techerDep',
+                                      related_query_name='techerDeps',
+                                      limit_choices_to={'is_active': True})
+
+    pan_card = models.CharField(max_length=11, unique=True)
+    adhar_card = models.CharField(max_length=16, unique=True)
+
+    is_active = models.BooleanField(default=True)
+    created_on = models.DateTimeField(auto_now_add=True)
+    updated_on = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user_id} {self.department_id}-{self.main_subject_id}"
+
+
+# Address
+class Address(models.Model):
+
+    address_type = models.CharField(max_length=100, choices=[(
+        "Permanent ", "Permanent"), ("Current", "Current"), ("Other", "Other")])
+
+    staff_id = models.ForeignKey(User, on_delete=models.CASCADE,
+                                 related_name='UserAdd',
+                                 related_query_name='UserAdds',
+                                 limit_choices_to={'is_active': True})
+
+    address = models.TextField()
+    city = models.CharField(max_length=254)
+    state = models.CharField(max_length=254)
+    country = models.CharField(max_length=50)
+    pincode = models.CharField(max_length=10)
+
+    is_active = models.BooleanField(default=True)
+    created_on = models.DateTimeField(auto_now_add=True)
+    updated_on = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.staff_id}-{self.address_type}"

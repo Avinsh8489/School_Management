@@ -92,7 +92,7 @@ from django.http import HttpResponse
 from django.template.loader import get_template
 
 from django.shortcuts import render, get_object_or_404
-
+import re
 from app_admin.models import User
 # Serializers
 from app_admin.serializers import (
@@ -530,3 +530,149 @@ class AdminLoginViews(generics.GenericAPIView):
                     status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"responseCode": 400, "responseMessage": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# Request to Forget Password
+# Request Forget Password
+class RequestPasswordResetEmailViews(generics.GenericAPIView):
+
+    serializer_class = ResetPasswordEmailRequestSerializer
+    authentication_clesses = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    # Swager Paramters
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+
+        email = request.data.get('email', '')
+        if not re.match('^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$', email):
+            return Response({
+                "responseCode": 400,
+                "responseMessage": _("You are not company employee. Please Enter Company Email.")},
+                status=status.HTTP_400_BAD_REQUEST)
+
+        if User.objects.filter(email=email).exists():
+            user = User.objects.get(email=email)
+            if user.is_staff == True or user.is_superuser == True:
+                return Response({
+                    "responseCode": 401,
+                    "responseMessage": _("You can not reset your password. ")},
+                    status=status.HTTP_401_UNAUTHORIZED)
+
+            uidb64 = urlsafe_base64_encode(smart_bytes(user.id))
+            token = PasswordResetTokenGenerator().make_token(user)
+            current_site = get_current_site(request=request).domain
+
+            relativeLink = reverse(
+                'passwordResetConfirm', kwargs={'uidb64': uidb64, 'token': token})
+
+            redirect_url = request.data.get('redirect_url', '')
+
+            absurl = 'http://'+current_site + relativeLink
+
+            """
+            email_body = 'Hello, \n Use link below to reset your password  \n' + \
+                absurl+"?redirect_url="+redirect_url
+
+            data = {'email_body': email_body, 'to_email': user.email,
+                    'email_subject': 'Reset your passsword'}
+            """
+
+            # HTML Tag
+            email_body = absurl+"?redirect_url="+redirect_url
+
+            template_path = 'forgetPassword.html'
+
+            context_data = {
+                'verfiy_link': email_body
+            }
+
+            email_html_template = get_template(
+                template_path).render(context_data)
+
+            data = {
+                "email_body": email_html_template,
+                "to_email": user.email,
+                "email_subject": "verify your email",
+            }
+
+            SendEmail.send_email(data)
+
+            return Response({
+                            "responseCode": 200,
+                            "responseMessage": _("Email have been sent Register E-Mail.")},
+                            status=status.HTTP_200_OK)
+        else:
+            return Response({
+                "responseCode": 400,
+                "responseMessage": _("You are not registered.")},
+                status=status.HTTP_400_BAD_REQUEST)
+
+
+# Set Token For Forgetting Password
+class PasswordTokenCheckAPIViews(generics.GenericAPIView):
+    serializer_class = SetNewPasswordSerializer
+    authentication_clesses = [JWTAuthentication]
+    permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser, ]
+
+    def get(self, request, uidb64, token):
+
+        try:
+            id = smart_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(id=id)
+
+            if not PasswordResetTokenGenerator().check_token(user, token):
+
+                return Response({
+                    "responseCode": 400,
+                    "responseMessage": _("Token is not valid, please request a new one.")},
+                    status=status.HTTP_401_UNAUTHORIZED)
+
+            return Response(
+                {
+                    "success": True,
+                    "message": "Credentials valid",
+                    "uidb64": uidb64,
+                    "token": token,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except DjangoUnicodeDecodeError as identifier:
+            if not PasswordResetTokenGenerator().check_token(user):
+                return Response(
+                    {"error": _("Token is not valid, please request a new one")},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+
+
+# Set Forget Password
+class SetNewPasswordAPIView(generics.GenericAPIView):
+
+    serializer_class = SetNewPasswordSerializer
+    authentication_clesses = [JWTAuthentication]
+    permission_classes = [AllowAny]
+    # parser_classes = [MultiPartParser, ]
+
+    # # parser_classes = [MultiPartParser, ]
+
+    def patch(self, request):
+        serializer = self.serializer_class(data=request.data)
+
+        if serializer.is_valid(raise_exception=False):
+            return Response({
+                "responseCode": 200,
+                "responseMessage": _("Your Password have been reseted.")},
+                status=status.HTTP_200_OK)
+        else:
+            if serializer.errors.get('Password_Length'):
+                return Response({
+                    "responseCode": 400,
+                    "responseMessage": _("Passwords must be bewtween 6  to 25 Characters.")},
+                    status=status.HTTP_400_BAD_REQUEST)
+            elif serializer.errors.get('Reset_Link'):
+                return Response({
+                    "responseCode": 400,
+                    "responseMessage": _("The Reset link is invalid.")},
+                    status=status.HTTP_400_BAD_REQUEST)

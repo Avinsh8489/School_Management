@@ -2,10 +2,16 @@
 Imported Packages
 """
 from django.contrib import admin
+
+
 from django.contrib.auth.admin import UserAdmin
 
 from app_admin.models import (
     User,
+    Subject,
+    Department,
+    StaffDetails,
+    Address,
 
 )
 
@@ -98,3 +104,24 @@ class UserAdmin(UserAdmin):
             },
         ),
     )
+
+
+@admin.register(Subject)
+class SubjectAdmin(admin.ModelAdmin):
+    list_display = ["id", "subject_code", "subject_name", "is_active"]
+
+
+@admin.register(Department)
+class DepartmentAdmin(admin.ModelAdmin):
+    list_display = ["id", "department_code", "department_name", "is_active"]
+
+
+@admin.register(StaffDetails)
+class StaffAdmin(admin.ModelAdmin):
+    list_display = ["user_id", "gender",
+                    "department_id", "is_active"]
+
+
+@admin.register(Address)
+class DepartmentAdmin(admin.ModelAdmin):
+    list_display = ["id", "staff_id", "address_type", "is_active"]
