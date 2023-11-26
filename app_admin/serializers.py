@@ -35,7 +35,7 @@ from django.conf import settings
 import re
 
 # Admin MOdel
-from app_admin.models import User
+from app_admin.models import User, Department, Subject, StaffDetails, Address
 
 """
 ******************************************************************************************************************
@@ -424,3 +424,57 @@ class UserChangePasswordSerilizer(serializers.Serializer):
                 "Passwords must be bewtween 6  to 25 Characters.")})
 
         return attrs
+
+
+"""
+******************************************************************************************************************
+                                 Other Model
+******************************************************************************************************************
+"""
+
+
+# Subject
+class SubjectSerailziers(serializers.ModelSerializer):
+
+    class Meta:
+        model = Subject
+        fields = ["id", "subject_code", "subject_name"]
+        read_only_fields = ["id", ]
+
+
+#
+class DepartmentSerailziers(serializers.ModelSerializer):
+
+    class Meta:
+        model = Department
+        fields = ["id", "department_code", "department_name"]
+        read_only_fields = ["id", ]
+
+
+class StaffDetailsSerailziers(serializers.ModelSerializer):
+
+    class Meta:
+        model = StaffDetails
+        fields = ["id", "user_id", "main_subject_id",  "subjects_ids", "date_of_joining",
+                  "date_of_leaving", "gender", "department_id", "pan_card", "adhar_card"]
+        read_only_fields = ["id", ]
+
+    def validate(self, attrs):
+        date_of_joining = attrs.get("date_of_joining")
+        date_of_leaving = attrs.get("date_of_leaving")
+        pan_card = attrs.get("pan_card")
+        adhar_card = attrs.get("adhar_card")
+
+        if not adhar_card.isdigit() or len(adhar_card) != 16:
+            raise serializers.ValidationError(
+                "You should enter valid adhar number")
+
+        elif len(pan_card) != 10 or not pan_card.isalnum() or not pan_card[0:5].isalpha() or not pan_card[-1].isalpha() or not pan_card[5:9].isdigit():
+            raise serializers.ValidationError(
+                "You should enter valid Pan card")
+
+        elif date_of_leaving < date_of_joining:
+            raise serializers.ValidationError(
+                "You should enter valid Pan card")
+
+        return super().validate(attrs)

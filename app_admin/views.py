@@ -54,6 +54,7 @@ import jwt
 
 # OS
 import os
+from rest_framework.exceptions import NotFound
 
 # Filter
 from django.db.models import Q
@@ -91,9 +92,12 @@ from io import BytesIO
 from django.http import HttpResponse
 from django.template.loader import get_template
 
+from rest_framework import mixins
+from rest_framework import generics
+
 from django.shortcuts import render, get_object_or_404
 import re
-from app_admin.models import User
+from app_admin.models import User, Subject, Department, StaffDetails, Address
 # Serializers
 from app_admin.serializers import (
 
@@ -105,6 +109,9 @@ from app_admin.serializers import (
     SetNewPasswordSerializer,
     AdminLoginSerializers,
     UserChangePasswordSerilizer,
+    SubjectSerailziers,
+    DepartmentSerailziers,
+    StaffDetailsSerailziers,
 
 
 )
@@ -474,8 +481,10 @@ class UserLoginViews(generics.GenericAPIView):
 class AdminLoginViews(generics.GenericAPIView):
 
     serializer_class = AdminLoginSerializers
-    permissions_class = [AllowAny]
-    # parser_classes = [MultiPartParser]
+    authentication_clesses = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    parser_classes = [MultiPartParser]
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
@@ -676,3 +685,203 @@ class SetNewPasswordAPIView(generics.GenericAPIView):
                     "responseCode": 400,
                     "responseMessage": _("The Reset link is invalid.")},
                     status=status.HTTP_400_BAD_REQUEST)
+
+
+"""
+******************************************************************************************************************
+                                                        
+******************************************************************************************************************
+"""
+
+# Subject
+
+
+class SubjectListCreateView(generics.GenericAPIView, mixins.ListModelMixin, mixins.CreateModelMixin):
+    authentication_clesses = [JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Subject.objects.all()
+    serializer_class = SubjectSerailziers
+
+    @swagger_auto_schema(tags=["Subject"], operation_description=("Payload:", '..'),)
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=["Subject"], operation_description=("Payload:", '..'),)
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
+
+class UpdateDestroyGetStudentView(generics.GenericAPIView, mixins.DestroyModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin):
+    authentication_clesses = [JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Subject.objects.all()
+    serializer_class = SubjectSerailziers
+
+    @swagger_auto_schema(tags=["Subject"], operation_description=("Payload:", '..'),)
+    def get(self, request, *args, **kwargs):
+        return self.retrieve(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=["Subject"], operation_description=("Payload:", '..'),)
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=["Subject"], operation_description=("Payload:", '..'),)
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
+
+
+"""
+******************************************************************************************************************
+                                                        
+******************************************************************************************************************
+"""
+
+
+# Department
+
+class DepartmentListCreate(generics.ListCreateAPIView):
+    authentication_clesses = [JWTAuthentication]
+    permission_classes = [permissions.IsAdminUser]
+    queryset = Department.objects.filter(is_active=True)
+    serializer_class = DepartmentSerailziers
+
+
+class DepartmentUpdateDeteletGet(generics.RetrieveUpdateDestroyAPIView):
+    authentication_clesses = [JWTAuthentication]
+    permission_classes = [permissions.IsAdminUser]
+    queryset = Department.objects.filter(is_active=True)
+    serializer_class = DepartmentSerailziers
+
+
+class StaffDetailsCreateView(generics.GenericAPIView):
+    authentication_classes = [JWTAuthentication]
+    # permission_classes = [permissions.IsAdminUser]
+    permission_classes = [permissions.AllowAny]
+    serializer_class = StaffDetailsSerailziers
+
+    @ swagger_auto_schema(tags=["Staff Details"], operation_description="",)
+    def post(self, request, *args, **kwargs):
+        try:
+
+            serializer = self.serializer_class(
+                data=request.data, context={"request": request})
+            if serializer.is_valid(raise_exception=False):
+                serializer.save()
+
+                """===================== Create By & Update On ====================="""
+                # BookingSlot.objects.filter(
+                #     id=serializer.data['id']).update(created_by=str(UserID))
+
+                return Response({
+                    "response_code": 201,
+                    "response_message": _("Staff Created"),
+                    "response_data": serializer.data},
+                    # "response_data": serializer.data},
+                    status=status.HTTP_201_CREATED)
+                # return Response(user_data, status=status.HTTP_201_CREATED)
+            else:
+                return Response({"response_code": 400, "response_message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({"code": 400, "message": _(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @ swagger_auto_schema(tags=["Staff Details"], operation_description="Super admin & Admin will create Booking SLot, using by this api",)
+    def get(self, request, format=None):
+        BookingSlot_Data = StaffDetails.objects.filter(
+            is_active=True).order_by("id")
+
+        serializer = self.serializer_class(
+            BookingSlot_Data, many=True, context={"request": request})
+
+        return Response(
+            {"code": 200,
+             'message': _("Success"),
+             'data': serializer.data},
+            status=status.HTTP_200_OK)
+
+
+class StaffDetailsUpdateView(generics.GenericAPIView):
+    authentication_classes = [JWTAuthentication]
+    # permission_classes = [permissions.IsAdminUser]
+    permission_classes = [permissions.AllowAny]
+    serializer_class = StaffDetailsSerailziers
+
+    @ swagger_auto_schema(tags=["Staff Details"], operation_description="",)
+    def get_object(self, pk):
+        try:
+            return StaffDetails.objects.get(pk=pk)
+        except StaffDetails.DoesNotExist:
+            raise NotFound(
+                detail={"code": 404, 'message': "Data Not Found"}, code=status.HTTP_404_NOT_FOUND)
+
+    @ swagger_auto_schema(tags=["Staff Details"], operation_description="Super admin & Admin will create Booking SLot, using by this api",)
+    def patch(self, request, pk, format=None):
+        try:
+
+            User_ID = self.get_object(pk)
+
+            # """================================================"""
+
+            serializer = self.serializer_class(User_ID, data=request.data,  partial=True,
+                                               context={"request": request})
+
+            if serializer.is_valid(raise_exception=False):
+                serializer.save()
+
+                """===================== Encrypt & Decrypt Data ====================="""
+
+                return Response({
+                    "response_code": 200,
+                    "response_message": _("Booking Slot has been updated."),
+                    "response_data": serializer.data, },
+                    status=status.HTTP_200_OK)
+            else:
+
+                return Response({"response_code": 400, "response_message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+
+            return Response({"code": 400, "message": _(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(tags=["Staff Details"], operation_description="Super admin & Admin will delete Booking SLot, using by this api",)
+    def delete(self, request, pk, format=None):
+
+        # """================================================"""
+        Pincode_for_del = self.get_object(pk)
+
+        if Pincode_for_del.is_active == True:
+
+            Pincode_for_del.is_active = False
+
+            Pincode_for_del.save()
+
+            return Response(
+                {"responseCode": 200,
+                    'responseMessage': _("Successfully Deleted")},
+                status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {"responseCode": 400,
+                    'responseMessage':  _("Already Is Deleted")},
+                status=status.HTTP_400_BAD_REQUEST)
+
+    @ swagger_auto_schema(tags=["Staff Details"], operation_description="Get Admin User Details",)
+    def get(self, request, pk, format=None):
+
+        Courier_Company_id = self.get_object(pk)
+
+        if Courier_Company_id.is_active == True:
+
+            serializer = self.serializer_class(
+                Courier_Company_id,  context={"request": request})
+            # 'responseData': encrypt_data(serializer.data)},
+            return Response(
+                {"responseCode": 200,
+                    'responseMessage': _("Success"),
+                    'responseData': serializer.data},
+                status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {"responseCode": 404,
+                 'responseMessage': _("No Data"), },
+                status=status.HTTP_404_NOT_FOUND)

@@ -11,6 +11,12 @@ from app_admin.views import (
     RequestPasswordResetEmailViews,
     PasswordTokenCheckAPIViews,
     SetNewPasswordAPIView,
+    SubjectListCreateView,
+    UpdateDestroyGetStudentView,
+    DepartmentListCreate,
+    DepartmentUpdateDeteletGet,
+    StaffDetailsCreateView,
+    StaffDetailsUpdateView,
 )
 urlpatterns = [
     path("Register-User/", RegisterView.as_view(), name="RegisterUser"),
@@ -25,4 +31,16 @@ urlpatterns = [
          PasswordTokenCheckAPIViews.as_view(), name='passwordResetConfirm'),
     path('Password-Reset-Complete/', SetNewPasswordAPIView.as_view(),
          name='PasswordResetComplete'),
+
+    # Subject
+    path("create-list-subject/", SubjectListCreateView.as_view(),
+         name="CreateLIstViewSubject"),
+    path("Update-get-delete/<int:pk>/", UpdateDestroyGetStudentView.as_view()),
+
+    path("deparmtnet-create-list-subject/", DepartmentListCreate.as_view(),),
+    path("deparmtnet-Update-get-delete/<int:pk>/",
+         DepartmentUpdateDeteletGet.as_view()),
+
+    path("Create-Staff/", StaffDetailsCreateView.as_view()),
+    path("update_staff/<int:pk>/", StaffDetailsUpdateView.as_view())
 ]
